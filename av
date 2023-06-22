@@ -1,0 +1,84 @@
+#!/bin/bash
+
+read -r -d "" AV_HELP << EOF
+NAME
+    av - aws-vault shortcuts
+
+SYNOPSIS
+    av help
+    av show [ec2|rds]
+    av profile NEW_AWS_PROFILE
+    av COMMAND
+
+DESCRIPTION
+    This command bundles shortcuts for aws-vault invocation.
+
+    In simplest form,
+        av COMMAND
+    is equivalent to
+        aws-vault exec \$AWS_PROFILE -- COMMAND
+
+    "av show" contains shortcuts for common filters to wade through verbose aws CLI responses.
+
+    Multiple av invocations can be combined, but there can only be one COMMAND and it has
+    to be the last thing you do. For example:
+
+        av  profile oat show ec2 rds aws sts get-caller-identity
+
+    breaks down as
+
+        av [set profile] [list ec2] [list rds] [run AWS CLI command]
+EOF
+
+function show(){
+    local args_shifted=0
+
+    while true; do
+        case "$1" in
+            ec2)
+                av aws ec2 describe-instances | jq '.Reservations[].Instances[]|{id:.InstanceId,name:(.Tags[]|select(.Key=="Name")|.Value),type:.InstanceType,status:.State.Name}'
+                shift
+                args_shifted=$(expr $args_shifted + 1)
+                ;;
+            rds)
+                av aws rds describe-db-clusters | jq '.DBClusters[]|{id:.DBClusterIdentifier,status:.Status}'
+                shift
+                args_shifted=$(expr $args_shifted + 1)
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+    return $args_shifted
+}
+
+if [ -z "$1" ]; then
+    echo "$AV_HELP"
+    exit 1
+fi
+
+while true; do
+    case "$1" in
+        -h|--help|help)
+            echo "$AV_HELP"
+            exit 1
+            ;;
+        p|prof|profile)
+            export AWS_PROFILE=$2
+            shift 2
+            ;;
+        show)
+            shift
+            show $*
+            shift $?
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+if [ -n "$1" ]; then
+    aws-vault exec $AWS_PROFILE -- $*
+fi
