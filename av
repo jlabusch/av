@@ -23,7 +23,7 @@ DESCRIPTION
     Multiple av invocations can be combined, but there can only be one COMMAND and it has
     to be the last thing you do. For example:
 
-        av  profile oat show ec2 rds aws sts get-caller-identity
+        av  profile staging show ec2 rds aws sts get-caller-identity
 
     breaks down as
 

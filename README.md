@@ -30,10 +30,10 @@ aws-vault exec $AWS_PROFILE -- COMMAND
 Multiple `av` invocations can be combined, but there can only be one COMMAND and it has to be the last thing you do. For example:
 
 ```shell
-av profile oat show ec2 rds aws sts get-caller-identity
+av profile staging show ec2 rds aws sts get-caller-identity
 ```
 breaks down as
- - set profile to "oat"
+ - set profile to "staging"
  - list EC2 instances
  - list RDS clusters
  - run the `aws sts get-caller-identity` command
