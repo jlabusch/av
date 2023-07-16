@@ -41,7 +41,7 @@ function show(){
                 args_shifted=$(expr $args_shifted + 1)
                 ;;
             rds)
-                av aws rds describe-db-clusters | jq '.DBClusters[]|{id:.DBClusterIdentifier,status:.Status}'
+                av aws rds describe-db-instances | jq '.DBInstances[]|{id:.DBInstanceIdentifier,cluster:.DBClusterIdentifier,type:.DBInstanceClass,version:.EngineVersion,multiAZ:.MultiAZ,status:.DBInstanceStatus,AZ:.AvailabilityZone}'
                 shift
                 args_shifted=$(expr $args_shifted + 1)
                 ;;
