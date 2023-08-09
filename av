@@ -32,16 +32,31 @@ EOF
 
 function show(){
     local args_shifted=0
+    local json=$(mktemp)
 
     while true; do
         case "$1" in
             ec2)
-                av aws ec2 describe-instances | jq '.Reservations[].Instances[]|{id:.InstanceId,name:(.Tags[]|select(.Key=="Name")|.Value),type:.InstanceType,status:.State.Name}'
+                av aws ec2 describe-instances > $json
+
+                echo "Running:"
+                cat $json | jq '[.Reservations[].Instances[]|{id:.InstanceId,name:(.Tags[]|select(.Key=="Name")|.Value),type:.InstanceType,status:.State.Name}]|sort_by(.name)|.[]|select(.status=="running")'
+
+                echo "Not running:"
+                cat $json | jq '[.Reservations[].Instances[]|{id:.InstanceId,name:(.Tags[]|select(.Key=="Name")|.Value),type:.InstanceType,status:.State.Name}]|sort_by(.name)|.[]|select(.status!="running")'
+
                 shift
                 args_shifted=$(expr $args_shifted + 1)
                 ;;
             rds)
-                av aws rds describe-db-instances | jq '.DBInstances[]|{id:.DBInstanceIdentifier,cluster:.DBClusterIdentifier,type:.DBInstanceClass,version:.EngineVersion,multiAZ:.MultiAZ,status:.DBInstanceStatus,AZ:.AvailabilityZone}'
+                av aws rds describe-db-instances > $json
+
+                echo "Available:"
+                cat $json | jq '[.DBInstances[]|{id:.DBInstanceIdentifier,cluster:.DBClusterIdentifier,type:.DBInstanceClass,version:.EngineVersion,multiAZ:.MultiAZ,status:.DBInstanceStatus,AZ:.AvailabilityZone}]|sort_by(.id)|.[]|select(.status=="available")'
+
+                echo "Unavailable:"
+                cat $json | jq '[.DBInstances[]|{id:.DBInstanceIdentifier,cluster:.DBClusterIdentifier,type:.DBInstanceClass,version:.EngineVersion,multiAZ:.MultiAZ,status:.DBInstanceStatus,AZ:.AvailabilityZone}]|sort_by(.id)|.[]|select(.status!="available")'
+
                 shift
                 args_shifted=$(expr $args_shifted + 1)
                 ;;
@@ -50,6 +65,9 @@ function show(){
                 ;;
         esac
     done
+
+    rm -f $json
+
     return $args_shifted
 }
 
