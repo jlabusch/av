@@ -33,14 +33,19 @@ EOF
 function show(){
     local args_shifted=0
     local json=$(mktemp)
+    local SKIP_VAULT=""
+
+    if $NO_VAULT; then
+        SKIP_VAULT="--no-vault"
+    fi
 
     while true; do
         case "$1" in
             ec2)
-                av aws ec2 describe-instances > $json
+                av $SKIP_VAULT aws ec2 describe-instances > $json
 
                 echo "Running:"
-                cat $json | jq '[.Reservations[].Instances[]|{id:.InstanceId,name:(.Tags[]|select(.Key=="Name")|.Value),type:.InstanceType,status:.State.Name}]|sort_by(.name)|.[]|select(.status=="running")'
+                cat $json | jq '[.Reservations[].Instances[]|{id:.InstanceId,name:(.Tags[]|select(.Key=="Name")|.Value),public_fqdn:.PublicDnsName,private_fqdn:.PrivateDnsName,type:.InstanceType,status:.State.Name}]|sort_by(.name)|.[]|select(.status=="running")'
 
                 echo "Not running:"
                 cat $json | jq '[.Reservations[].Instances[]|{id:.InstanceId,name:(.Tags[]|select(.Key=="Name")|.Value),type:.InstanceType,status:.State.Name}]|sort_by(.name)|.[]|select(.status!="running")'
@@ -49,7 +54,7 @@ function show(){
                 args_shifted=$(expr $args_shifted + 1)
                 ;;
             rds)
-                av aws rds describe-db-instances > $json
+                av $SKIP_VAULT aws rds describe-db-instances > $json
 
                 echo "Available:"
                 cat $json | jq '[.DBInstances[]|{id:.DBInstanceIdentifier,cluster:.DBClusterIdentifier,type:.DBInstanceClass,version:.EngineVersion,multiAZ:.MultiAZ,status:.DBInstanceStatus,AZ:.AvailabilityZone}]|sort_by(.id)|.[]|select(.status=="available")'
@@ -76,11 +81,17 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
+NO_VAULT=false
+
 while true; do
     case "$1" in
         -h|--help|help)
             echo "$AV_HELP"
             exit 1
+            ;;
+        --no-vault)
+            NO_VAULT=true
+            shift
             ;;
         p|prof|profile)
             export AWS_PROFILE=$2
@@ -98,5 +109,9 @@ while true; do
 done
 
 if [ -n "$1" ]; then
-    aws-vault exec $AWS_PROFILE -- $*
+    if $NO_VAULT; then
+        AWS_PROFILE=$AWS_PROFILE $*
+    else
+        aws-vault exec $AWS_PROFILE -- $*
+    fi
 fi
