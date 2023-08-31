@@ -6,7 +6,7 @@
 
 ```shell
 av help
-av show [ec2|rds]
+av show [--only-running] [ec2|rds]
 av profile NEW_AWS_PROFILE
 av COMMAND
 ```

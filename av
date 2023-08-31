@@ -6,7 +6,7 @@ NAME
 
 SYNOPSIS
     av help
-    av show [ec2|rds]
+    av show [--only-running] [ec2|rds]
     av profile NEW_AWS_PROFILE
     av COMMAND
 
@@ -41,14 +41,21 @@ function show(){
 
     while true; do
         case "$1" in
+            --only-running)
+                SHOW_STOPPED=false
+                shift
+                args_shifted=$(expr $args_shifted + 1)
+                ;;
             ec2)
                 av $SKIP_VAULT aws ec2 describe-instances > $json
 
-                echo "Running:"
-                cat $json | jq '[.Reservations[].Instances[]|{id:.InstanceId,name:(.Tags[]|select(.Key=="Name")|.Value),public_fqdn:.PublicDnsName,private_fqdn:.PrivateDnsName,type:.InstanceType,status:.State.Name}]|sort_by(.name)|.[]|select(.status=="running")'
+                echo "Running:" >&2
+                cat $json | jq '[[.Reservations[].Instances[]|{id:.InstanceId,name:(.Tags[]|select(.Key=="Name")|.Value),public_fqdn:.PublicDnsName,private_fqdn:.PrivateDnsName,type:.InstanceType,status:.State.Name}]|sort_by(.name)|.[]|select(.status=="running")]'
 
-                echo "Not running:"
-                cat $json | jq '[.Reservations[].Instances[]|{id:.InstanceId,name:(.Tags[]|select(.Key=="Name")|.Value),type:.InstanceType,status:.State.Name}]|sort_by(.name)|.[]|select(.status!="running")'
+                if $SHOW_STOPPED; then
+                    echo "Not running:" >&2
+                    cat $json | jq '[[.Reservations[].Instances[]|{id:.InstanceId,name:(.Tags[]|select(.Key=="Name")|.Value),type:.InstanceType,status:.State.Name}]|sort_by(.name)|.[]|select(.status!="running")]'
+                fi
 
                 shift
                 args_shifted=$(expr $args_shifted + 1)
@@ -56,11 +63,13 @@ function show(){
             rds)
                 av $SKIP_VAULT aws rds describe-db-instances > $json
 
-                echo "Available:"
-                cat $json | jq '[.DBInstances[]|{id:.DBInstanceIdentifier,cluster:.DBClusterIdentifier,type:.DBInstanceClass,version:.EngineVersion,multiAZ:.MultiAZ,status:.DBInstanceStatus,AZ:.AvailabilityZone}]|sort_by(.id)|.[]|select(.status=="available")'
+                echo "Available:" >&2
+                cat $json | jq '[[.DBInstances[]|{id:.DBInstanceIdentifier,cluster:.DBClusterIdentifier,type:.DBInstanceClass,version:.EngineVersion,multiAZ:.MultiAZ,status:.DBInstanceStatus,AZ:.AvailabilityZone}]|sort_by(.id)|.[]|select(.status=="available")]'
 
-                echo "Unavailable:"
-                cat $json | jq '[.DBInstances[]|{id:.DBInstanceIdentifier,cluster:.DBClusterIdentifier,type:.DBInstanceClass,version:.EngineVersion,multiAZ:.MultiAZ,status:.DBInstanceStatus,AZ:.AvailabilityZone}]|sort_by(.id)|.[]|select(.status!="available")'
+                if $SHOW_STOPPED; then
+                    echo "Unavailable:" >&2
+                    cat $json | jq '[[.DBInstances[]|{id:.DBInstanceIdentifier,cluster:.DBClusterIdentifier,type:.DBInstanceClass,version:.EngineVersion,multiAZ:.MultiAZ,status:.DBInstanceStatus,AZ:.AvailabilityZone}]|sort_by(.id)|.[]|select(.status!="available")]'
+                fi
 
                 shift
                 args_shifted=$(expr $args_shifted + 1)
@@ -82,6 +91,7 @@ if [ -z "$1" ]; then
 fi
 
 NO_VAULT=false
+SHOW_STOPPED=true
 
 while true; do
     case "$1" in
@@ -91,6 +101,10 @@ while true; do
             ;;
         --no-vault)
             NO_VAULT=true
+            shift
+            ;;
+        --only-running)
+            SHOW_STOPPED=false
             shift
             ;;
         p|prof|profile)
