@@ -37,3 +37,12 @@ breaks down as
  - list EC2 instances
  - list RDS clusters
  - run the `aws sts get-caller-identity` command
+
+# ADDITIONAL EXAMPLES
+
+Stop all of the `testing-1/2/3` EC2 instances:
+
+```
+av profile testing aws ec2 stop-instances --instance-ids \
+    $(av profile testing show ec2 2>/dev/null | jq -r '.[]|select(.name | test("testing-[0-9]-"))|.id')
+```

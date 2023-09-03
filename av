@@ -49,11 +49,11 @@ function show(){
             ec2)
                 av $SKIP_VAULT aws ec2 describe-instances > $json
 
-                echo "Running:" >&2
+                echo "EC2 running:" >&2
                 cat $json | jq '[[.Reservations[].Instances[]|{id:.InstanceId,name:(.Tags[]|select(.Key=="Name")|.Value),public_fqdn:.PublicDnsName,private_fqdn:.PrivateDnsName,type:.InstanceType,status:.State.Name}]|sort_by(.name)|.[]|select(.status=="running")]'
 
                 if $SHOW_STOPPED; then
-                    echo "Not running:" >&2
+                    echo "EC2 not running:" >&2
                     cat $json | jq '[[.Reservations[].Instances[]|{id:.InstanceId,name:(.Tags[]|select(.Key=="Name")|.Value),type:.InstanceType,status:.State.Name}]|sort_by(.name)|.[]|select(.status!="running")]'
                 fi
 
@@ -63,11 +63,11 @@ function show(){
             rds)
                 av $SKIP_VAULT aws rds describe-db-instances > $json
 
-                echo "Available:" >&2
+                echo "RDS available:" >&2
                 cat $json | jq '[[.DBInstances[]|{id:.DBInstanceIdentifier,cluster:.DBClusterIdentifier,type:.DBInstanceClass,version:.EngineVersion,multiAZ:.MultiAZ,status:.DBInstanceStatus,AZ:.AvailabilityZone}]|sort_by(.id)|.[]|select(.status=="available")]'
 
                 if $SHOW_STOPPED; then
-                    echo "Unavailable:" >&2
+                    echo "RDS not available:" >&2
                     cat $json | jq '[[.DBInstances[]|{id:.DBInstanceIdentifier,cluster:.DBClusterIdentifier,type:.DBInstanceClass,version:.EngineVersion,multiAZ:.MultiAZ,status:.DBInstanceStatus,AZ:.AvailabilityZone}]|sort_by(.id)|.[]|select(.status!="available")]'
                 fi
 
