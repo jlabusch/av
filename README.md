@@ -44,5 +44,13 @@ Stop all of the `testing-1/2/3` EC2 instances:
 
 ```
 av profile testing aws ec2 stop-instances --instance-ids \
-    $(av profile testing show ec2 2>/dev/null | jq -r '.[]|select(.name | test("testing-[0-9]-"))|.id')
+    $(av profile testing show --only-running ec2 2>/dev/null | jq -r '.[]|select(.name | test("testing-[1-3]-"))|.id')
+```
+
+This is roughly equivalent to the raw aws CLI command:
+
+```
+aws --profile testing ec2 stop-instances --instance-ids \
+    $(aws --profile testing ec2 describe-instances | \
+      jq -r '[.Reservations[].Instances[]|{name:(.Tags[]|select(.Key=="Name")|.Value),id:.InstanceId}]|.[]|select(.name | test("testing-[1-3]-"))|.id')
 ```
